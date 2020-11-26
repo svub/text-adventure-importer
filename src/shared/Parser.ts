@@ -177,8 +177,9 @@ export default class Parser {
     if (token.type != TokenType.command) {
       this.error('Cannot parse command, token is not a command', token);
     }
-    //                                special spaces, too
-    const elements = token.data.split(/ | /).map(s => s.trim()).filter(s => s.length > 0);
+    // https://eslint.org/docs/rules/no-irregular-whitespace
+    //                            handle nbsp
+    const elements = token.data.split(/ |\u00A0/).map(s => s.trim()).filter(s => s.length > 0);
     return {
       type: elements[0].toLocaleLowerCase(),
       fields: elements.slice(1),
