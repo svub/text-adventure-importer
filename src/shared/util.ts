@@ -1,9 +1,9 @@
 export async function loadText(url: string) {
-    return await (await fetch(url, { mode: "no-cors" })).text()
+    return await (await fetch(url)).text()
 }
 
 export async function loadJson(url: string) {
-    return await (await fetch(url, { mode: "no-cors" })).json()
+    return await (await fetch(url)).json()
 }
 
 export function equal(a: any, b: any): boolean {

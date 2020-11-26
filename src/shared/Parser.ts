@@ -52,6 +52,10 @@ export default class Parser {
       return element!;
     }
 
+    if (tokens.length < 1) {
+      this.error('No tokens');
+    }
+
     do {
       const token = tokens[this.position];
 
