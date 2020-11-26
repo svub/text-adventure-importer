@@ -1,6 +1,5 @@
-import { Book, Section, Chapter, ElementType, Paragraph, If, Else, HasElements, Link } from './entities';
+import { Book, Chapter, Section, ElementType, Paragraph, If, Else, HasElements, Link, ChangeState, AddItem, RemoveItem } from './entities';
 import { Token, TokenType } from './Lexer';
-import { RemoveItem, State, ChangeState, AddItem } from '../../../app/src/shared/entities';
 
 export enum CommandType {
   book = 'book',

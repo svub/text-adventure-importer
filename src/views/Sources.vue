@@ -84,7 +84,7 @@ type ParserMessage = {
       try {
         book = parser.parse(tokens);
         log('load', book);
-        (this.$refs.book! as HTMLTextAreaElement).value = JSON.stringify(book, null, ' ');
+        (this.$refs.book! as HTMLTextAreaElement).value = `export default ${JSON.stringify(book, null, ' ')};`;
       } catch (parserMessages) {
         messages.push(...parserMessages);
       }
