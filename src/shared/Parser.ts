@@ -20,6 +20,15 @@ export type Command = {
   line: number;
 };
 
+export class ParserError extends Error {
+  token?: Token;
+
+  constructor(message: string, token?: Token) {
+    super(message);
+    this.token = token;
+  }
+}
+
 export default class Parser {
   position = 0;
 
@@ -36,24 +45,24 @@ export default class Parser {
     const getTitle = (command: Command): string => {
       const next = tokens[this.position + 1];
       if (next.type !== TokenType.paragraph) {
-        this.error('Book needs a title as text after // book command', command, next);
+        this.error('Book needs a title as text after // book command', next, command, next);
       }
       this.position++;
       return next.data;
     }
-    const topContainer = (command?: Command): HasElements => {
+    const topContainer = (token: Token, command?: Command): HasElements => {
       const element = ([elseElement, ifElement, section].find(e => e !== null));
       if (!element) {
         if (command)
-          this.error(`Found a "// ${command.type}" before first "// section"`, command);
+          this.error(`Found a "// ${command.type}" before first "// section"`, token, command);
         else
-          this.error('Found text before first "// section"');
+          this.error('Found text before first "// section"', token);
       }
       return element!;
     }
 
     if (tokens.length < 1) {
-      this.error('No tokens');
+      this.error('No tokens', null);
     }
 
     do {
@@ -63,14 +72,14 @@ export default class Parser {
         const command = this.parseCommand(token);
         switch (command.type) {
           case CommandType.book:
-            if (book) this.error('Found a second "// book" command. Book already initialize', book, command);
+            if (book) this.error('Found a second "// book" command. Book already initialize', token, book, command);
             book = {
               title: getTitle(command),
               chapters: [],
             }
             break;
           case CommandType.chapter:
-            if (!book) this.error('Found a "// chapter" before "// book"', command);
+            if (!book) this.error('Found a "// chapter" before "// book"', token, command);
             chapter = {
               id: command.fields[0],
               title: getTitle(command),
@@ -79,7 +88,7 @@ export default class Parser {
             book!.chapters.push(chapter);
             break;
           case CommandType.section:
-            if (!chapter) this.error('Found a "// section" before first "// chapter"', command);
+            if (!chapter) this.error('Found a "// section" before first "// chapter"', token, command);
             section = {
               id: command.fields[0],
               title: getTitle(command),
@@ -89,22 +98,22 @@ export default class Parser {
             chapter!.sections.push(section);
             break;
           case CommandType.next:
-            if (!chapter) this.error('Found a "// >" before first "// chapter"', command);
-            if (!section) this.error('Found a "// >" before first "// section"', command);
+            if (!chapter) this.error('Found a "// >" before first "// chapter"', token, command);
+            if (!section) this.error('Found a "// >" before first "// section"', token, command);
             const link: Link = {
               title: command.fields.slice(1).join(' '),
-              sectionId: command.fields[0],
               chapterId: chapter!.id, // same chapter link
+              sectionId: command.fields[0],
             };
             // TODO add link related commands
             section!.next.push(link);
             break;
           case CommandType.jump:
-            if (!section) this.error('Found a "// >" before first "// section"', command);
+            if (!section) this.error('Found a "// >" before first "// section"', token, command);
             const jump: Link = {
               title: command.fields.slice(2).join(' '),
-              sectionId: command.fields[0],
-              chapterId: command.fields[1], // cross chapter link
+              chapterId: command.fields[0], // cross chapter link
+              sectionId: command.fields[1],
             };
             // TODO add related commands
             section!.next.push(jump);
@@ -115,10 +124,10 @@ export default class Parser {
               id: command.fields[0],
               modifier: command.fields[1],
             };
-            topContainer(command).elements.push(state);
+            topContainer(token, command).elements.push(state);
             break;
           case CommandType.item:
-            if (!section) this.error('Found a "// item" before first "// section"', command);
+            if (!section) this.error('Found a "// item" before first "// section"', token, command);
             const item = (command.fields[0].toLocaleLowerCase() === 'remove')
               ? {
                 type: ElementType.removeItem,
@@ -128,10 +137,10 @@ export default class Parser {
                 type: ElementType.addItem,
                 id: command.fields[0],
               } as AddItem;
-            topContainer(command).elements.push(item);
+            topContainer(token, command).elements.push(item);
             break;
           case CommandType.if:
-            if (ifElement) this.error('Found another "// if" before "// end if"', command);
+            if (ifElement) this.error('Found another "// if" before "// end if"', token, command);
             ifElement = {
               type: ElementType.if,
               condition: command.fields.join(' '),
@@ -140,7 +149,7 @@ export default class Parser {
             section!.elements.push(ifElement);
             break;
           case CommandType.else:
-            if (!ifElement) this.error('Found "// else" before "// if"', command);
+            if (!ifElement) this.error('Found "// else" before "// if"', token, command);
             elseElement = {
               type: ElementType.else,
               ifCondition: ifElement!.condition,
@@ -149,11 +158,11 @@ export default class Parser {
             section!.elements.push(elseElement);
             break;
           case CommandType.endif:
-            if (!ifElement) this.error('Found "// endif" before "// if"', command);
+            if (!ifElement) this.error('Found "// endif" before "// if"', token, command);
             ifElement = elseElement = null;
             break;
           default:
-            this.error(`Command type ${command.type} not implemented`, command);
+            this.error(`Command type ${command.type} not implemented`, token, command);
           }
       } else { // text
         if (!section) this.error('Found a text before first "// section"', token);
@@ -161,14 +170,14 @@ export default class Parser {
           type: ElementType.paragraph,
           text: token.data,
         };
-        topContainer().elements.push(element);
+        topContainer(token).elements.push(element);
       }
 
       this.position++;
       // if (this.position >= tokens.length) break; // done
     } while (this.position < tokens.length);
     if (!book) {
-      this.error('// book not found');
+      this.error('// book not found', null);
     }
     return book!;
   }
@@ -187,8 +196,8 @@ export default class Parser {
     }
   }
 
-  error(message: string, ...data: any[]) {
-    console.error(message, ...data);
-    throw new Error(`${message}: ${data}`);
+  error(message: string, token: Token | null, ...data: any[]) {
+    console.error('Parsing error: ', message, token, ...data);
+    throw new ParserError(`${message}: ${data}`, token ?? undefined);
   }
 }

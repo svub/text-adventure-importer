@@ -11,7 +11,7 @@ export function equal(a: any, b: any): boolean {
 }
 
 export function shortenString(s: string, maxLength = 100): string {
-    return s.length > maxLength - 3 ? `${s.substr(0, maxLength - 3)}...` : s;
+    return s && s.length > maxLength - 3 ? `${s.substr(0, maxLength - 3)}...` : s;
 }
 
 function _log(f = console.log, message: string, ...data: any[]){

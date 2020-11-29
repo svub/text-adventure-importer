@@ -1,29 +1,25 @@
 <template lang="pug">
 main.sources
   textarea.urls(ref="urls")
-    | https://docs.google.com/document/d/e/2PACX-1vRvBU8wGqFOEdnXAwQq618pk3oLmdofNJj2f4AvNmyl6wzz7vspLekZF95G_n2iXtPIjP6yMcHs4rw9/pub
-    | https://docs.google.com/document/d/e/2PACX-1vQ_56Jw7HG3h6HuJ9q50w-wqyasNixc1o9yyiOhxjAnHtmgl53aKi1Z5WWZR1JdfOEXhkajBhvD2XoK/pub
   button.load(@click="load") load
-  textarea.text(ref="text")
-  textarea.tokens(ref="tokens")
+  details
+    summary intermediary steps
+    textarea.text(ref="text")
+    textarea.tokens(ref="tokens")
   textarea.book(ref="book")
+  button.prepConfig(@click="prepConfig") prepare config from loaded book
+  textarea.config(ref="config")
 </template>
 
 <script lang="ts">
   import { Component, Vue, Prop } from 'vue-property-decorator';
-  import { State, Action } from 'vuex-class';
+  import { State, Action, Mutation } from 'vuex-class';
   import { loadText, log, warn } from '../shared/util';
-  import { TextEntity, Book } from "../shared/entities";
+  import { TextEntity, Book, Config, Element, ElementType, HasElements, AddItem } from "../shared/entities";
   import Lexer from "../shared/Lexer";
-  import Parser from "../shared/Parser";
+  import Parser, { ParserError } from "../shared/Parser";
 
   const dummy = window.location.href.includes('localhost');
-
-type ParserMessage = {
-    line: number;
-    type: ["error", "warning"];
-    error: any;
-  };
 
   type Parsed = TextEntity & {
     end: number;
@@ -33,13 +29,22 @@ type ParserMessage = {
     name: 'Sources',
   })
   export default class Sources extends Vue {
-    // const textareas = { urls: ref(null), text: ref(null), tokens: ref(null), book: ref(null) }
+
+    @Mutation setBook;
+    @Mutation setConfig;
+    @State config?: Config;
+    @State book?: Book;
+
+    mounted() {
+      (this.$refs.urls! as HTMLTextAreaElement).value = localStorage.urls ?? '';
+    }
 
     async load() {
-      let book: Book;
+      // let book: Book;
       const urls = dummy
         ? ['/test-data1.html', '/test-data2.html']
-        : (this.$refs.urls! as HTMLTextAreaElement).value!.split("\n");
+        : (this.$refs.urls! as HTMLTextAreaElement).value!.split(/\n| /);
+      localStorage.urls = (this.$refs.urls! as HTMLTextAreaElement).value;
       console.log(urls);
 
       const text = (await Promise.all(urls.map(async (url) => {
@@ -80,19 +85,49 @@ type ParserMessage = {
       console.log('tokens', tokens);
       (this.$refs.tokens! as HTMLTextAreaElement).value = JSON.stringify(tokens, null, ' ');
       const parser = new Parser();
-      const messages: ParserMessage[] = [];
+      const messages: ParserError[] = [];
       try {
-        book = parser.parse(tokens);
-        log('load', book);
-        (this.$refs.book! as HTMLTextAreaElement).value = `export default ${JSON.stringify(book, null, ' ')};`;
-      } catch (parserMessages) {
-        messages.push(...parserMessages);
+        this.setBook({ book: parser.parse(tokens) });
+        log('loaded', this.book);
+        (this.$refs.book! as HTMLTextAreaElement).value = `export default ${JSON.stringify(this.book, null, ' ')};`;
+      } catch (error) {
+        console.error(error);
+        messages.push(error);
       }
 
       if (messages.length > 0)
         warn("Errors", messages);
       else
         log("Parsing successful.");
+    }
+
+    prepConfig() {
+      const config: Config = this.config && window.confirm('Extend existing config from loaded book? (Cancel = create new)')
+        ? this.config
+        : {
+          items: [],
+        };
+
+      const elements = this.getAllElements(this.book);
+
+      // add all items
+      elements
+        .filter(element => element.type === ElementType.addItem)
+        .forEach((addItem: AddItem) => {
+          if (!config.items.find(item => item.id === addItem.id)) {
+            config.items.push({
+              id: addItem.id,
+              title: addItem.id,
+              thumbnail: 'URL to thumbnail file',
+              media: 'URL to media file',
+              category: 'category (optional)',
+            });
+          }
+        });
+
+      this.setConfig({ config });
+      log('prep config', this.config);
+      (this.$refs.config! as HTMLTextAreaElement).value = `export default ${JSON.stringify(this.config, null, ' ')};`;
     }
 
     test() {
@@ -108,6 +143,27 @@ type ParserMessage = {
       // check if all items of removeItem exist
       // check if items exist that are not in a removeItem
       // check if removeItem exist that have not been addItem before
+    }
+
+    getAllElements(book: Book): Element[] {
+      function findElements(has: HasElements): Element[] {
+        const results: Element[] = [];
+        has.elements.forEach(element => {
+          results.push(element);
+          const a = element as any;
+          if (a.elements) {
+            results.push(...findElements(a as HasElements));
+          }
+        });
+        return results;
+      }
+      const elements: Element[] = [];
+      book.chapters.forEach(chapter => {
+        chapter.sections.forEach(section => {
+          elements.push(...findElements(section));
+        })
+      });
+      return elements;
     }
   }
 
