@@ -47,37 +47,39 @@ main.sources
       localStorage.urls = (this.$refs.urls! as HTMLTextAreaElement).value;
       console.log(urls);
 
-      const text = (await Promise.all(urls.map(async (url) => {
-        console.log(url);
-        const raw = await loadText(url);
-        // HTML?
-        try {
-          if (raw.indexOf('<!DOCTYPE html>') >= 0) {
-            console.log('HTML');
-            const doc = new DOMParser().parseFromString(raw, "text/html").documentElement;
-            // console.log(doc);
-            console.log(doc.querySelector('#footer')!.textContent!);
-            // Google Docs?
-            if ((url.indexOf('docs.google.com/document') >= 0) ||
-              (doc.querySelector('#footer')!.textContent!.indexOf('Published by Google Drive') >= 0)) {
-              console.log('GDocs');
-              const root = doc.querySelector('#contents > div')!;
-              console.log(root);
-              root.innerHTML = root.innerHTML.replace(/<p>|<h[\d]>/gi, "").replace(/<br>|<\/p>|<\/h[\d]>/gi, "\n");
-              return root.textContent;
+      const text = (await Promise.all(urls
+        .filter(url => url && url.trim().length > 0)
+        .map(async (url) => {
+          log('Loading URL', url);
+          const raw = await loadText(url);
+          // HTML?
+          try {
+            if (raw.indexOf('<!DOCTYPE html>') >= 0) {
+              log('It\'s HTML...');
+              const doc = new DOMParser().parseFromString(raw, "text/html").documentElement;
+              // console.log(doc);
+              // console.log(doc.querySelector('#footer')?.textContent);
+              // Google Docs?
+              if ((url.indexOf('docs.google.com/document') >= 0) ||
+                ((doc.querySelector('#footer')?.textContent ?? '').indexOf('Published by Google Drive') >= 0)) {
+                log('It\'s Doogle Docs.');
+                const root = doc.querySelector('#contents > div')!;
+                log('Root element', root);
+                root.innerHTML = root.innerHTML.replace(/<p>|<h[\d]>/gi, "").replace(/<br>|<\/p>|<\/h[\d]>/gi, "\n");
+                return root.textContent;
+              }
+              if (doc.querySelector('body')) {
+                log('It\'s plain HTML.');
+                return doc.querySelector('body')!.textContent;
+              }
+              log('It\'s plain text.');
+              return doc.textContent;
             }
-            if (doc.querySelector('body')) {
-              console.log('body');
-              return doc.querySelector('body')!.textContent;
-            }
-            return doc.textContent;
+          } catch (error) {
+            error(`Failed parsing ${url}`, error);
           }
-        } catch (error) {
-          console.error(`Failed parsing ${url}`, error);
-        }
-        return raw;
+          return raw;
       }))).join("\n");
-      // console.log('text',text);
       (this.$refs.text! as HTMLTextAreaElement).value = text;
 
       const lexer = new Lexer();
