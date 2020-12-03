@@ -12,9 +12,9 @@ main.sources
 </template>
 
 <script lang="ts">
-  import { Component, Vue, Prop } from 'vue-property-decorator';
-  import { State, Action, Mutation } from 'vuex-class';
-  import { loadText, log, warn } from '../shared/util';
+  import { Component, Vue } from 'vue-property-decorator';
+  import { State, Mutation } from 'vuex-class';
+  import { error, loadText, log, warn } from '../shared/util';
   import { TextEntity, Book, Config, Element, ElementType, HasElements, AddItem } from "../shared/entities";
   import Lexer from "../shared/Lexer";
   import Parser, { ParserError } from "../shared/Parser";
@@ -30,8 +30,8 @@ main.sources
   })
   export default class Sources extends Vue {
 
-    @Mutation setBook;
-    @Mutation setConfig;
+    @Mutation setBook!: Function;
+    @Mutation setConfig!: Function;
     @State config?: Config;
     @State book?: Book;
 
@@ -102,18 +102,22 @@ main.sources
     }
 
     prepConfig() {
+      if (!this.book) {
+        error('Prepare config: book not initialized! Click "load" first.');
+      }
       const config: Config = this.config && window.confirm('Extend existing config from loaded book? (Cancel = create new)')
         ? this.config
         : {
           items: [],
         };
 
-      const elements = this.getAllElements(this.book);
+      const elements = this.getAllElements(this.book!);
 
       // add all items
       elements
         .filter(element => element.type === ElementType.addItem)
-        .forEach((addItem: AddItem) => {
+        .forEach((element: Element) => {
+          const addItem: AddItem = element as AddItem;
           if (!config.items.find(item => item.id === addItem.id)) {
             config.items.push({
               id: addItem.id,
