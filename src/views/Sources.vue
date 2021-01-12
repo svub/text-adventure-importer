@@ -1,20 +1,26 @@
 <template lang="pug">
 main.sources
-  textarea.urls(ref="urls")
+  textarea.urls(ref="urls") example.html
   button.load(@click="load") load
-  details
-    summary intermediary steps
-    textarea.text(ref="text")
-    textarea.tokens(ref="tokens")
-  textarea.book(ref="book")
-  button.prepConfig(@click="prepConfig") prepare config from loaded book
-  textarea.config(ref="config")
+  .book(v-if="bookJson")
+    details
+      summary intermediary steps
+      textarea.text {{ bookText }}
+      textarea.tokens {{ rawTokens }}
+    p Put the following into book.ts
+    textarea.book {{ bookJson }}
+    button.prepConfig(@click="prepConfig") prepare config from loaded book
+    .config(v-if="configJson")
+      p Put the following into config.ts
+      textarea.config {{ configJson }}
+      p Put the following into vue.config.js
+      textarea.config {{ vueConfig }}
 </template>
 
 <script lang="ts">
 import { Component, Vue } from "vue-property-decorator";
 import { State, Mutation } from "vuex-class";
-import { error, loadText, log, warn } from "../shared/util";
+import { loadText, log, warn, error } from "../shared/util";
 import {
   TextEntity,
   Book,
@@ -41,6 +47,11 @@ export default class Sources extends Vue {
   @Mutation setConfig!: Function;
   @State config?: Config;
   @State book?: Book;
+  bookText = '';
+  rawTokens = '';
+  bookJson = '';
+  configJson = '';
+  vueConfigJson = '';
 
   mounted() {
     (this.$refs.urls! as HTMLTextAreaElement).value = localStorage.urls ?? "";
@@ -49,20 +60,12 @@ export default class Sources extends Vue {
   async extractText(raw: string, url: string) {
     // HTML?
     if (raw.indexOf("<!DOCTYPE html>") >= 0) {
-      const doc = new DOMParser().parseFromString(raw, "text/html")
-        .documentElement;
-      // console.log(doc);
-      // console.log(doc.querySelector('#footer')?.textContent);
+      const doc = new DOMParser().parseFromString(raw, "text/html").documentElement;
       // Google Docs?
-      if (
-        url.indexOf("docs.google.com/document") >= 0 ||
-        (doc.querySelector("#footer")?.textContent ?? "").indexOf(
-          "Published by Google Drive"
-        ) >= 0
-      ) {
-        log("It's Doogle Docs.");
-        const root = doc.querySelector("#contents > div")!;
-        log("Root element", root.innerHTML);
+      if (url.indexOf("docs.google.com/document") >= 0 ||
+         (doc.querySelector("#footer")?.textContent ?? "").indexOf("Published by Google Drive") >= 0) {
+           const root = doc.querySelector("#contents > div")!;
+        log("It's Doogle Docs. Root element", root.innerHTML);
         root.innerHTML = root.innerHTML
           .replace(/<p>|<h[\d]>/gi, "")
           .replace(/<br>|<\/p>|<\/h[\d]>/gi, "\n");
@@ -80,7 +83,8 @@ export default class Sources extends Vue {
   async load() {
     // let book: Book;
     const urls = dummy
-      ? new Array(14).fill(0).map((v, index) => `/test-data${index}.html`)
+      // ? new Array(14).fill(0).map((v, index) => `/test-data${index}.html`)
+      ? ['/example.html']
       : (this.$refs.urls! as HTMLTextAreaElement).value!.split(/\n| /);
     localStorage.urls = (this.$refs.urls! as HTMLTextAreaElement).value;
     log("urls", urls);
@@ -95,32 +99,33 @@ export default class Sources extends Vue {
             const raw = await loadText(url);
             try {
               const text = await this.extractText(raw, url);
-              (this.$refs.text! as HTMLTextAreaElement).value += `\n\n${url}:\n${text}`;
+              this.bookText += `\n\n${url}:\n${text}`;
               return lexer.tokenize(text!, url)!;
-            } catch (error) {
-              error(`Failed parsing ${url}`, error);
+            } catch (e) {
+              error(`Failed parsing ${url}`, e?.message, e);
             }
           })
       )
-    ).flat().filter(token => token !== null) as Token[];
+    )
+      .flat()
+      .filter((token) => token !== null) as Token[];
 
     console.log("tokens", tokens);
-    (this.$refs.tokens! as HTMLTextAreaElement).value = JSON.stringify(
-      tokens,
-      null,
-      " "
-    );
+    this.rawTokens = JSON.stringify(tokens, null, " ");
     const parser = new Parser();
     const messages: ParserError[] = [];
     try {
       this.setBook({ book: parser.parse(tokens) });
       log("loaded", this.book);
-      (this.$refs
-        .book! as HTMLTextAreaElement).value = `export default ${JSON.stringify(
-        this.book,
-        null,
-        " "
-      )};`;
+      const json = JSON.stringify(this.book, null, " ");
+      // (this.$refs
+      //   .book! as HTMLTextAreaElement).value = `import { Book } from "./shared/entities";
+      //   const book: Book = (${json}) as unknown) as Book;
+      //   export default book;`;
+      this.bookJson =
+`import { Book } from "./shared/entities";\n
+const book: Book = ((${json}) as unknown) as Book;\n
+export default book;`;
     } catch (error) {
       console.error(error);
       messages.push(error);
@@ -157,19 +162,41 @@ export default class Sources extends Vue {
             title: addItem.id,
             thumbnail: "URL to thumbnail file",
             media: "URL to media file",
-            category: "category (optional)",
+            description: "Longer description text for this item (optional)",
+            category: "Category (optional)",
           });
         }
       });
 
     this.setConfig({ config });
     log("prep config", this.config);
-    (this.$refs
-      .config! as HTMLTextAreaElement).value = `export default ${JSON.stringify(
-      this.config,
-      null,
-      " "
-    )};`;
+    const configJson = JSON.stringify(this.config, null, " ");
+    // (this.$refs.config! as HTMLTextAreaElement).value = `export default ${configJson};`;
+    this.configJson = `export default ${configJson};`;
+
+    // (this.$refs.vueConfig! as HTMLTextAreaElement).value = `// vue.config.js
+    //   module.exports = {
+    //     chainWebpack: config => {
+    //       config
+    //         .plugin('html')
+    //         .tap(args => {
+    //             args[0].title = "${this.book.title}";
+    //             return args;
+    //         });
+    //     }
+    //   }`;
+    this.vueConfigJson =
+`// vue.config.js
+module.exports = {
+  chainWebpack: config => {
+    config
+      .plugin('html')
+      .tap(args => {
+          args[0].title = "${this.book.title}";
+          return args;
+      });
+  }
+}`;
   }
 
   test() {
@@ -212,18 +239,18 @@ export default class Sources extends Vue {
 </script>
 
 <style lang="stylus">
-main.sources {
-  display: flex;
-  flex-direction: column;
-  margin: auto;
-  max-width: 70em;
+main.sources
+  margin auto
+  max-width 70em
 
-  textarea {
-    height: 10em;
+  &, & .book, & .config
+    display flex
+    flex-direction column
 
-    &.book {
-      height: 30em;
-    }
-  }
-}
+  textarea
+    height 10em
+    display block
+
+    &.book
+      height 30em
 </style>
