@@ -22,6 +22,7 @@ export interface Reference {
 
 // entities
 export interface Config {
+  themes?: string[];
   items: Item[];
 }
 
@@ -47,6 +48,7 @@ export interface SpecialLink extends Title, Entity {}
 export interface Item extends Entity, Title {
   thumbnail: string;
   media: string;
+  description?: string;
   category?: string;
 }
 
