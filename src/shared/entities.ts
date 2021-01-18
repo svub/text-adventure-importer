@@ -33,7 +33,7 @@ export enum Specials {
 export interface Book extends Title {
   subTitle?: string;
   chapters: Chapter[];
-  specials: Map<Specials, Section>;
+  specials: {[id: string]: Section};
 }
 
 export interface Chapter extends Entity, Title {
