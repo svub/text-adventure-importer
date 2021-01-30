@@ -43,10 +43,7 @@ type Parsed = TextEntity & {
   name: "Sources",
 })
 export default class Sources extends Vue {
-  @Mutation setBook!: Function;
-  @Mutation setConfig!: Function;
-  @State config?: Config;
-  @State book?: Book;
+  book: Book;
   bookText = '';
   rawTokens = '';
   bookJson = '';
@@ -115,7 +112,7 @@ export default class Sources extends Vue {
     const parser = new Parser();
     const messages: ParserError[] = [];
     try {
-      this.setBook({ book: parser.parse(tokens) });
+      this.book = parser.parse(tokens);
       log("loaded", this.book);
       const json = JSON.stringify(this.book, null, " ");
       // (this.$refs
@@ -139,12 +136,10 @@ export default book;`;
     if (!this.book) {
       error('Prepare config: book not initialized! Click "load" first.');
     }
+    const existing = prompt('Paste existing config, leave empty to create a new config');
     const config: Config =
-      this.config &&
-      window.confirm(
-        "Extend existing config from loaded book? (Cancel = create new)"
-      )
-        ? this.config
+      existing
+        ? JSON.parse(existing)
         : {
             items: [],
           };
@@ -168,9 +163,10 @@ export default book;`;
         }
       });
 
-    this.setConfig({ config });
-    log("prep config", this.config);
-    const configJson = JSON.stringify(this.config, null, " ");
+    // this.setConfig({ config });
+    // this.config = config;
+    log("prep config", config);
+    const configJson = JSON.stringify(config, null, " ");
     // (this.$refs.config! as HTMLTextAreaElement).value = `export default ${configJson};`;
     this.configJson = `export default ${configJson};`;
 
