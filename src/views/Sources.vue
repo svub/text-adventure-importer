@@ -43,7 +43,7 @@ type Parsed = TextEntity & {
   name: "Sources",
 })
 export default class Sources extends Vue {
-  book: Book;
+  book?: Book;
   bookText = '';
   rawTokens = '';
   bookJson = '';
