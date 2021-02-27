@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "es2020",
+    "target": "esnext",
+    "module": "esnext",
     "strict": true,
     "jsx": "preserve",
     "importHelpers": true,
@@ -18,21 +18,38 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "assets/*": [
+        "src/assets/*"
+      ],
+      "fonts/*": [
+        "src/fonts/*"
+      ],
+      "components/*": [
+        "src/components/*"
+      ],
+      "styles/*": [
+        "src/styles/*"
+      ],
+      "src/*": [
+        "src/*"
       ]
     },
     "lib": [
-      "es2020",
+      "esnext",
       "dom",
       "dom.iterable",
       "scripthost",
-    ]
+    ],
+    "noImplicitAny": false,
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
     "tests/**/*.ts",
-    "tests/**/*.tsx"
+    "tests/**/*.tsx",
+    "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules"
