@@ -19,22 +19,6 @@ export interface Reference {
   sectionId: string;
 }
 
-// Config
-export interface Choice extends Entity, Title {
-  default?: boolean;
-}
-export interface Option extends Entity, Title {
-  choices: Choice[];
-}
-export interface Config {
-  themes?: string[];
-  items: Item[];
-  options: Option[];
-  feedbackMode?: boolean;
-  feedbackLink?: string;
-  language?: string; // default 'en'
-}
-
 // entities
 
 export enum Overlays {
@@ -43,6 +27,7 @@ export enum Overlays {
   chapters = 'chapters',
   items = 'items',
   shareOverlay = 'shareOverlay',
+  feedbackMode = 'feedbackMode',
 }
 
 export enum Functions {
@@ -57,10 +42,13 @@ export enum Pages {
 export const Specials = { ...Overlays, ...Functions, ...Pages };
 export type Specials = typeof Specials;
 
+// book mark-up
+
 export interface Book extends Title {
   subTitle?: string;
   chapters: Chapter[];
   specials: {[id: string]: Section};
+  config: Config;
 }
 
 export interface Chapter extends Entity, Title {
@@ -69,7 +57,6 @@ export interface Chapter extends Entity, Title {
 }
 
 export interface Section extends HasElements, Entity, Title {
-  elements: Element[];
   next: (Link | SpecialLink)[];
 }
 
@@ -83,18 +70,49 @@ export function isSpecialLink(link: Link | SpecialLink): link is SpecialLink {
   return !!(link as SpecialLink).id;
 }
 
-export interface Item extends Entity, Title {
-  thumbnail: string;
-  media: string;
-  description?: string;
-  category?: string;
+export enum MediaType {
+  link = 'link',
+  audio = 'audio',
+  video = 'video',
 }
-
 export interface State extends Entity {
   value: number;
 }
 
-// elements
+export interface Choice extends Entity, Title {
+  default?: boolean;
+}
+export interface Option extends Entity, Title {
+  choices: Choice[];
+}
+export interface FeedbackMode {
+  enabled: boolean;
+  feedbackLink?: string;
+}
+
+/* TODO: idea for item config:
+add item element with HasElements
+// items OR config # to be more generic
+// item <id> <category?> <media url?> <media type?>
+<item title>
+<description text as full MD until next // item>
+// enditems
+*/
+export interface Config {
+  // themes?: string[];
+  items: Item[];
+  options: Option[];
+  feedbackMode?: FeedbackMode;
+  language?: string; // default 'en'
+}
+export interface Item extends Entity, Title, HasElements {
+  category?: string;
+  mediaUrl?: string;
+  mediaType?: MediaType;
+}
+
+// text elements
+
 export enum ElementType {
   paragraph = 'paragraph',
   if = 'if',
@@ -108,6 +126,8 @@ export enum ElementType {
 export type Element = {
   type: ElementType;
 }
+
+
 export interface Paragraph extends Element {
   type: ElementType.paragraph;
   text: string;

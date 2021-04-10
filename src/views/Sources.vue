@@ -9,12 +9,12 @@ main.sources
       textarea.tokens {{ rawTokens }}
     p Put the following into book.ts
     textarea.book {{ bookJson }}
-    button.prepConfig(@click="prepConfig") prepare config from loaded book
-    .config(v-if="configJson")
-      p Put the following into config.ts
-      textarea.config {{ configJson }}
-      p Put the following into vue.config.js
-      textarea.config {{ vueConfig }}
+    //- button.prepConfig(@click="prepConfig") prepare config from loaded book
+    //- .config(v-if="configJson")
+    //-   p Put the following into config.ts
+    //-   textarea.config {{ configJson }}
+    //-   p Put the following into vue.config.js
+    //-   textarea.config {{ vueConfig }}
 </template>
 
 <script lang="ts">
@@ -29,9 +29,10 @@ import {
   ElementType,
   HasElements,
   AddItem,
+  MediaType,
 } from "../shared/entities";
-import Lexer, { Token } from "../shared/Lexer";
-import Parser, { ParserError } from "../shared/Parser";
+import Lexer, { Token } from "../Lexer";
+import Parser, { ParserError } from "../Parser";
 
 const dummy = window.location.href.includes("localhost");
 
@@ -47,8 +48,8 @@ export default class Sources extends Vue {
   bookText = '';
   rawTokens = '';
   bookJson = '';
-  configJson = '';
-  vueConfigJson = '';
+  // configJson = '';
+  // vueConfigJson = '';
 
   mounted() {
     (this.$refs.urls! as HTMLTextAreaElement).value = localStorage.urls ?? "";
@@ -78,10 +79,9 @@ export default class Sources extends Vue {
   }
 
   async load() {
-    // let book: Book;
     const urls = dummy
       // ? new Array(14).fill(0).map((v, index) => `/test-data${index}.html`)
-      ? ['/example.html']
+      ? ['/example-book.html']
       : (this.$refs.urls! as HTMLTextAreaElement).value!.split(/\n| /);
     localStorage.urls = (this.$refs.urls! as HTMLTextAreaElement).value;
     log("urls", urls);
@@ -115,10 +115,6 @@ export default class Sources extends Vue {
       this.book = parser.parse(tokens);
       log("loaded", this.book);
       const json = JSON.stringify(this.book, null, " ");
-      // (this.$refs
-      //   .book! as HTMLTextAreaElement).value = `import { Book } from "./shared/entities";
-      //   const book: Book = (${json}) as unknown) as Book;
-      //   export default book;`;
       this.bookJson =
 `import { Book } from "./shared/entities";\n
 const book: Book = ((${json}) as unknown) as Book;\n
@@ -132,68 +128,54 @@ export default book;`;
     else log("Parsing successful.");
   }
 
-  prepConfig() {
-    if (!this.book) {
-      error('Prepare config: book not initialized! Click "load" first.');
-    }
-    const existing = prompt('Paste existing config, leave empty to create a new config');
-    const config: Config =
-      existing
-        ? JSON.parse(existing)
-        : {
-            items: [],
-          };
+//   prepConfig() {
+//     if (!this.book) {
+//       error('Prepare config: book not initialized! Click "load" first.');
+//     }
+//     const existing = prompt('Paste existing config, leave empty to create a new config');
+//     const config: Config =
+//       existing
+//         ? JSON.parse(existing)
+//         : {
+//             items: [],
+//           };
 
-    const elements = this.getAllElements(this.book!);
+//     const elements = this.getAllElements(this.book!);
 
-    // add all items
-    elements
-      .filter((element) => element.type === ElementType.addItem)
-      .forEach((element: Element) => {
-        const addItem: AddItem = element as AddItem;
-        if (!config.items.find((item) => item.id === addItem.id)) {
-          config.items.push({
-            id: addItem.id,
-            title: addItem.id,
-            thumbnail: "URL to thumbnail file",
-            media: "URL to media file",
-            description: "Longer description text for this item (optional)",
-            category: "Category (optional)",
-          });
-        }
-      });
+//     // add all items
+//     elements
+//       .filter((element) => element.type === ElementType.addItem)
+//       .forEach((element: Element) => {
+//         const addItem: AddItem = element as AddItem;
+//         if (!config.items.find((item) => item.id === addItem.id)) {
+//           config.items.push({
+//             id: addItem.id,
+//             title: addItem.id,
+//             category: "Category name, will be used as CSS class (optional)",
+//             description: "Longer description text for this item, can use markdown (optional)",
+//             media: "URL to media file (optional); type can be link, audio, video",
+//             mediaType: MediaType.link,
+//           });
+//         }
+//       });
 
-    // this.setConfig({ config });
-    // this.config = config;
-    log("prep config", config);
-    const configJson = JSON.stringify(config, null, " ");
-    // (this.$refs.config! as HTMLTextAreaElement).value = `export default ${configJson};`;
-    this.configJson = `export default ${configJson};`;
+//     log("prep config", config);
+//     const configJson = JSON.stringify(config, null, " ");
+//     this.configJson = `export default ${configJson};`;
 
-    // (this.$refs.vueConfig! as HTMLTextAreaElement).value = `// vue.config.js
-    //   module.exports = {
-    //     chainWebpack: config => {
-    //       config
-    //         .plugin('html')
-    //         .tap(args => {
-    //             args[0].title = "${this.book.title}";
-    //             return args;
-    //         });
-    //     }
-    //   }`;
-    this.vueConfigJson =
-`// vue.config.js
-module.exports = {
-  chainWebpack: config => {
-    config
-      .plugin('html')
-      .tap(args => {
-          args[0].title = "${this.book.title}";
-          return args;
-      });
-  }
-}`;
-  }
+//     this.vueConfigJson =
+// `// vue.config.js
+// module.exports = {
+//   chainWebpack: config => {
+//     config
+//       .plugin('html')
+//       .tap(args => {
+//           args[0].title = "${this.book.title}";
+//           return args;
+//       });
+//   }
+// }`;
+//   }
 
   test() {
     // each book needs 1+ chapters
@@ -204,7 +186,7 @@ module.exports = {
     // check that all formatting options are closed for each paragraph
     // check that each link has a target
     // check that each section is linked to
-    // check if all items of addItem exist
+    // check if all items of addItem exist (has a itemdef for all items used)
     // check if items exist that are not in an addItem
     // check if all items of removeItem exist
     // check if items exist that are not in a removeItem
