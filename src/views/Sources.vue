@@ -9,28 +9,18 @@ main.sources
       textarea.tokens {{ rawTokens }}
     p Put the following into book.ts
     textarea.book {{ bookJson }}
-    //- button.prepConfig(@click="prepConfig") prepare config from loaded book
-    //- .config(v-if="configJson")
-    //-   p Put the following into config.ts
-    //-   textarea.config {{ configJson }}
+    button.prepConfig(@click="prepConfig") prepare config from loaded book
+    .config(v-if="configText")
+      p Put the following into book text to get you started with defining all your items
+      textarea.config {{ configText }}
     //-   p Put the following into vue.config.js
     //-   textarea.config {{ vueConfig }}
 </template>
 
 <script lang="ts">
 import { Component, Vue } from "vue-property-decorator";
-import { State, Mutation } from "vuex-class";
 import { loadText, log, warn, error } from "../shared/util";
-import {
-  TextEntity,
-  Book,
-  Config,
-  Element,
-  ElementType,
-  HasElements,
-  AddItem,
-  MediaType,
-} from "../shared/entities";
+import { TextEntity, Book, Element, ElementType, HasElements, AddItem, } from "../shared/entities";
 import Lexer, { Token } from "../Lexer";
 import Parser, { ParserError } from "../Parser";
 
@@ -48,8 +38,7 @@ export default class Sources extends Vue {
   bookText = '';
   rawTokens = '';
   bookJson = '';
-  // configJson = '';
-  // vueConfigJson = '';
+  configText = '';
 
   mounted() {
     (this.$refs.urls! as HTMLTextAreaElement).value = localStorage.urls ?? "";
@@ -128,54 +117,33 @@ export default book;`;
     else log("Parsing successful.");
   }
 
-//   prepConfig() {
-//     if (!this.book) {
-//       error('Prepare config: book not initialized! Click "load" first.');
-//     }
-//     const existing = prompt('Paste existing config, leave empty to create a new config');
-//     const config: Config =
-//       existing
-//         ? JSON.parse(existing)
-//         : {
-//             items: [],
-//           };
+  prepConfig() {
+    if (!this.book) {
+      error('Prepare config: book not initialized! Click "load" first.');
+    }
+    const elements = this.getAllElements(this.book!);
+    let text = '';
 
-//     const elements = this.getAllElements(this.book!);
+    // add all items
+    elements
+      .filter((element) => element.type === ElementType.addItem)
+      .forEach((element: Element) => {
+        const addItem: AddItem = element as AddItem;
+        text += `
+// itemdef ${addItem.id} category? <mediaUrl?> <mediaType?>
+${addItem.id}
+Write your item description here, you can use markdown (optional)
 
-//     // add all items
-//     elements
-//       .filter((element) => element.type === ElementType.addItem)
-//       .forEach((element: Element) => {
-//         const addItem: AddItem = element as AddItem;
-//         if (!config.items.find((item) => item.id === addItem.id)) {
-//           config.items.push({
-//             id: addItem.id,
-//             title: addItem.id,
-//             category: "Category name, will be used as CSS class (optional)",
-//             description: "Longer description text for this item, can use markdown (optional)",
-//             media: "URL to media file (optional); type can be link, audio, video",
-//             mediaType: MediaType.link,
-//           });
-//         }
-//       });
+Above, category should be a name without spaces, will be used as CSS class (optional)
+MediaUrl is a link to some website or a media file (optional).
+Type can be link, audio, video (required if you provide a mediaUrl).
+// enditemdef
+`;
+      });
 
-//     log("prep config", config);
-//     const configJson = JSON.stringify(config, null, " ");
-//     this.configJson = `export default ${configJson};`;
-
-//     this.vueConfigJson =
-// `// vue.config.js
-// module.exports = {
-//   chainWebpack: config => {
-//     config
-//       .plugin('html')
-//       .tap(args => {
-//           args[0].title = "${this.book.title}";
-//           return args;
-//       });
-//   }
-// }`;
-//   }
+    log("prep config", text);
+    this.configText = text;
+  }
 
   test() {
     // each book needs 1+ chapters
