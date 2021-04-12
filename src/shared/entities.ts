@@ -70,11 +70,14 @@ export function isSpecialLink(link: Link | SpecialLink): link is SpecialLink {
   return !!(link as SpecialLink).id;
 }
 
+// > config
+
 export enum MediaType {
   link = 'link',
   audio = 'audio',
   video = 'video',
 }
+
 export interface State extends Entity {
   value: number;
 }
@@ -82,33 +85,27 @@ export interface State extends Entity {
 export interface Choice extends Entity, Title {
   default?: boolean;
 }
+
 export interface Option extends Entity, Title {
   choices: Choice[];
 }
+
 export interface FeedbackMode {
   enabled: boolean;
   feedbackLink?: string;
 }
 
-/* TODO: idea for item config:
-add item element with HasElements
-// items OR config # to be more generic
-// item <id> <category?> <media url?> <media type?>
-<item title>
-<description text as full MD until next // item>
-// enditems
-*/
-export interface Config {
-  // themes?: string[];
-  items: Item[];
-  options: Option[];
-  feedbackMode?: FeedbackMode;
-  language?: string; // default 'en'
-}
 export interface Item extends Entity, Title, HasElements {
   category?: string;
   mediaUrl?: string;
   mediaType?: MediaType;
+}
+
+export interface Config {
+  items: Item[];
+  options: Option[];
+  feedbackMode?: FeedbackMode;
+  language?: string; // default 'en'
 }
 
 // text elements
@@ -127,32 +124,37 @@ export type Element = {
   type: ElementType;
 }
 
-
 export interface Paragraph extends Element {
   type: ElementType.paragraph;
   text: string;
 }
+
 export interface If extends Element, HasElements {
   type: ElementType.if;
   condition: string;
 }
+
 export interface Else extends Element, HasElements {
   type: ElementType.else;
   ifCondition: string;
 }
+
 export interface AddItem extends Element {
   type: ElementType.addItem;
   id: string;
 }
+
 export interface RemoveItem extends Element {
   type: ElementType.removeItem;
   id: string;
 }
+
 export interface ChangeState extends Element {
   type: ElementType.state;
   id: string;
   modifier: string;
 }
+
 export interface Style extends Element, HasElements {
   type: ElementType.style;
   classes: string;
