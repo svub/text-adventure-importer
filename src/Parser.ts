@@ -339,12 +339,22 @@ export default class Parser {
             option = null;
             break;
 
-          // feedback <enabled> <feedbackUrl>
+          // feedback <enabled> <feedbackUrl?>
+          // OR
+          // feedback <enabled> url <feedbackUrl> <fragments1> <fragments2> ...
           case CommandType.feedback:
             if (!book) this.error('Found a "// feedback" before "// book"', token, command);
+            const mode = (command.fields[1] ?? '').toLocaleLowerCase();
             const feedback: FeedbackMode = {
               enabled: parseBool(command.fields[0]),
-              feedbackLink: command.fields[1],
+              ...(mode !== 'url'
+                ? {
+                  feedbackLink: command.fields[1],
+                }
+                : {
+                  feedbackLink: command.fields[2],
+                  urlFragments: command.fields.slice(3),
+                })
             };
             book!.config.feedbackMode = feedback;
             break;
