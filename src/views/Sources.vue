@@ -130,7 +130,7 @@ export default book;`;
       .forEach((element: Element) => {
         const addItem: AddItem = element as AddItem;
         text += `
-// itemdef ${addItem.id} category? <mediaUrl?> <mediaType?>
+// itemdef ${addItem.id} category? mediaUrl? mediaType?
 ${addItem.id}
 Write your item description here, you can use markdown (optional)
 
