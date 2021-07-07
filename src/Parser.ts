@@ -116,7 +116,7 @@ export default class Parser {
           // book
           // <title>
           case CommandType.book:
-            if (book) this.error('Found a second "// book" command. Book already initialize', token, this.position, book, command);
+            if (book) this.error('Found a second "// book" command. Not allowed.', token, this.position, book, command);
             book = {
               title: getTitle(command),
               chapters: [],
