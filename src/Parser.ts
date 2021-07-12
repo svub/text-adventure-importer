@@ -28,6 +28,7 @@ export enum CommandType {
   endoption = 'endoption',
   feedback = 'feedback',
   language = 'language',
+  pageScrollUpDelay = 'pageScrollUpDelay',
 }
 
 export type Command = {
@@ -366,6 +367,13 @@ export default class Parser {
             if (!book) this.error('Found a "// language" before "// book"', token, this.position, command);
             // TODO: check against list of supported languages?
             book!.config.language = (command.fields[0] ?? 'en').toLowerCase();
+            break;
+
+          // pageScrollUpDelay <id>
+          case CommandType.pageScrollUpDelay:
+            if (!book) this.error('Found a "// pageScrollUpDelay" before "// book"', token, this.position, command);
+            // TODO: merge this with language and others into something generic such as "// config ..."
+            book!.config.pageScrollUpDelay = parseInt(command.fields[0] ?? 1);
             break;
 
           default:
