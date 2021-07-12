@@ -28,7 +28,7 @@ export enum CommandType {
   endoption = 'endoption',
   feedback = 'feedback',
   language = 'language',
-  pageScrollUpDelay = 'pageScrollUpDelay',
+  pageScrollUpDelay = 'pagescrollupdelay',
 }
 
 export type Command = {
