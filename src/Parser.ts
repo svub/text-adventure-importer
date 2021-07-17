@@ -51,6 +51,7 @@ export class ParserError extends Error {
 
 const converter = new showdown.Converter();
 converter.setOption('simpleLineBreaks', true)
+converter.setOption('openLinksInNewWindow', true)
 function parseMarkdown(text: string): string {
     return converter.makeHtml(text);
 }
