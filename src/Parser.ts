@@ -294,18 +294,18 @@ export default class Parser {
             section = credits;
             break;
 
-          // itemdef <id> <category?> <mediaUrl?> <mediaType?>
+          // itemdef <id> <category?> <mediaType?> <mediaUrl?>
           case CommandType.itemDefinition:
             if (!book) this.error('Found a "// itemdef" before "// book"', token, this.position, command);
             itemDefinition = {
               id: command.fields[0].toLowerCase(),
               ...(command.fields.length === 3 ? { // no category
-                mediaUrl: command.fields[1] ?? undefined,
-                mediaType: command.fields[2] ? MediaType[command.fields[3]] : undefined,
+                mediaType: command.fields[1] ? MediaType[command.fields[1]] : undefined,
+                mediaUrl: command.fields[2] ?? undefined,
               } : {
                 category: (command.fields[1] ?? '').toLowerCase(),
-                mediaUrl: command.fields[2] ?? undefined,
-                mediaType: command.fields[3] ? MediaType[command.fields[3]] : undefined,
+                mediaType: command.fields[2] ? MediaType[command.fields[2]] : undefined,
+                mediaUrl: command.fields[3] ?? undefined,
               }),
               title: getTitle(command),
               elements: [],

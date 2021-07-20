@@ -130,13 +130,14 @@ export default book;`;
       .forEach((element: Element) => {
         const addItem: AddItem = element as AddItem;
         text += `
-// itemdef ${addItem.id} category? mediaUrl? mediaType?
+// itemdef ${addItem.id} category? mediaType? mediaUrl?
 ${addItem.id}
 Write your item description here, you can use markdown (optional)
 
 Above, category should be a name without spaces, will be used as CSS class (optional)
-MediaUrl is a link to some website or a media file (optional).
-Type can be link, audio, video (required if you provide a mediaUrl).
+MediaType can be link, audio, video (optional, required if using URL).
+MediaUrl is a link to some website or a media file (optional, depending on mediaType).
+
 // enditemdef
 `;
       });
