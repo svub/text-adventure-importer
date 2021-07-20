@@ -299,9 +299,14 @@ export default class Parser {
             if (!book) this.error('Found a "// itemdef" before "// book"', token, this.position, command);
             itemDefinition = {
               id: command.fields[0].toLowerCase(),
-              category: (command.fields[1] ?? '').toLowerCase(),
-              mediaUrl: command.fields[2] ?? undefined,
-              mediaType: command.fields[3] ? MediaType[command.fields[3]] : undefined,
+              ...(command.fields.length === 3 ? { // no category
+                mediaUrl: command.fields[1] ?? undefined,
+                mediaType: command.fields[2] ? MediaType[command.fields[3]] : undefined,
+              } : {
+                category: (command.fields[1] ?? '').toLowerCase(),
+                mediaUrl: command.fields[2] ?? undefined,
+                mediaType: command.fields[3] ? MediaType[command.fields[3]] : undefined,
+              }),
               title: getTitle(command),
               elements: [],
             };
