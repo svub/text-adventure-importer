@@ -80,7 +80,8 @@ export default class Parser {
     const getTitle = (command: Command): string => {
       const next = tokens[this.position + 1];
       if (next.type !== TokenType.paragraph) {
-        this.error('Book needs a title as text after // book command', next, this.position + 1, command, next);
+        const msg = `Command ${command.type} needs a title as text in a new line directly after // ${command.type}`;
+        this.error(msg, next, this.position + 1, command, next);
       }
       this.position++;
       return next.data;
