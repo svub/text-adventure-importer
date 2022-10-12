@@ -160,7 +160,8 @@ MediaUrl is a link to some website or a media file (optional, depending on media
     // check if all items of removeItem exist
     // check if items exist that are not in a removeItem
     // check if removeItem exist that have not been addItem before
-    // credits required
+    // credits required?
+    // imprint required?
   }
 
   getAllElements(book: Book): Element[] {

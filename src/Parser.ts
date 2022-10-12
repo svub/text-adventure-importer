@@ -21,6 +21,7 @@ export enum CommandType {
   style = 'style',
   endstyle = 'endstyle',
   credits = 'credits',
+  imprint = 'imprint',
   itemDefinition = 'itemdef',
   endItemDefinition = 'enditemdef',
   option = 'option',
@@ -281,7 +282,7 @@ export default class Parser {
             styleElement = null;
             break;
 
-          // credits
+          // credits merge imprint and credits into special, a generic overlay type
           // <title>
           case CommandType.credits:
             if (!book) this.error('Found a "// credits" before "// book"', token, this.position, command);
@@ -293,6 +294,20 @@ export default class Parser {
             };
             book!.specials[Specials.credits] = credits;
             section = credits;
+            break;
+
+          // imprint
+          // <title>
+          case CommandType.imprint:
+            if (!book) this.error('Found a "// imprint" before "// book"', token, this.position, command);
+            const imprint: Section = {
+              id: Specials.imprint,
+              title: getTitle(command),
+              elements: [],
+              next: [],
+            };
+            book!.specials[Specials.imprint] = imprint;
+            section = imprint;
             break;
 
           // itemdef <id> <category?> <mediaType?> <mediaUrl?>
