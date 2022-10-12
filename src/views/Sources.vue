@@ -48,7 +48,7 @@ export default class Sources extends Vue {
       const doc = new DOMParser().parseFromString(raw, "text/html").documentElement;
       // Google Docs?
       if (url.indexOf("docs.google.com/document") >= 0 ||
-         (doc.querySelector("#footer")?.textContent ?? "").indexOf("Published by Google Drive") >= 0) {
+         (doc.querySelector("#publish-banner-text")?.textContent ?? "").indexOf("Published using Google Docs") >= 0) {
            const root = doc.querySelector("#contents > div")!;
         log("It's Doogle Docs. Root element", root.innerHTML);
         root.innerHTML = root.innerHTML
