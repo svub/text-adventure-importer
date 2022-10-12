@@ -24,8 +24,6 @@ import { TextEntity, Book, Element, ElementType, HasElements, AddItem, } from ".
 import Lexer, { Token } from "../Lexer";
 import Parser, { ParserError } from "../Parser";
 
-const dummy = window.location.href.includes("localhost");
-
 type Parsed = TextEntity & {
   end: number;
 };
@@ -68,10 +66,8 @@ export default class Sources extends Vue {
   }
 
   async load() {
-    const urls = dummy
-      // ? new Array(14).fill(0).map((v, index) => `/test-data${index}.html`)
-      ? ['/example-book.html']
-      : (this.$refs.urls! as HTMLTextAreaElement).value!.split(/\n| /);
+    const urlsText = (this.$refs.urls! as HTMLTextAreaElement).value || '/example-book.html';
+    const urls = urlsText.split(/\n| /);
     localStorage.urls = (this.$refs.urls! as HTMLTextAreaElement).value;
     log("urls", urls);
 
