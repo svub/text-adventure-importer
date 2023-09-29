@@ -1,9 +1,10 @@
+import showdown from 'showdown';
+import hash from 'hash-sum';
 import { Book, Chapter, Section, ElementType, Paragraph, If, Else, HasElements, Link, ChangeState, AddItem, RemoveItem,
   SpecialLink, Style, Specials, Option, Config, Item, MediaType, Choice, FeedbackMode } from './shared/entities';
 import { Token, TokenType } from './Lexer';
 import { Functions } from './shared/entities';
 import { parseBool } from './shared/util';
-import showdown from 'showdown';
 
 export enum CommandType {
   book = 'book',
@@ -403,9 +404,11 @@ export default class Parser {
         }
       } else { // text
         const container = topContainer(token);
+        const text = parseMarkdown(token.data);
         const element: Paragraph = {
           type: ElementType.paragraph,
-          text: parseMarkdown(token.data),
+          text, 
+          id: hash(text),
         };
         container.elements.push(element);
       }

@@ -8,14 +8,21 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@vue/language-plugin-pug": "^1.8.11",
     "core-js": "^3.6.5",
+    "hash-sum": "^2.0.0",
+    "jszip": "^3.10.1",
+    "lodash": "^4.17.21",
+    "microsoft-cognitiveservices-speech-sdk": "^1.32.0",
     "showdown": "^1.9.1",
     "vue": "^2.6.11",
     "vue-class-component": "^7.2.3",
     "vue-property-decorator": "^8.4.2",
     "vue-router": "^3.2.0",
     "vuex": "^3.4.0",
-    "vuex-class": "^0.3.2"
+    "vuex-class": "^0.3.2",
+    "vuex-map-fields": "^1.4.1",
+    "vuex-persist": "^3.1.3"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^2.33.0",
@@ -27,6 +34,7 @@
     "@vue/cli-plugin-vuex": "~4.5.0",
     "@vue/cli-service": "~4.5.0",
     "@vue/eslint-config-typescript": "^5.0.2",
+    "@vue/runtime-dom": "^3.3.4",
     "eslint": "^6.7.2",
     "eslint-plugin-vue": "^6.2.2",
     "stylus": "^0.54.7",
