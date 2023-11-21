@@ -18,7 +18,7 @@ interface AppState {
   decisionConjunction: string;
   maxMBytesPerZip: number;
   replacements: string;
-  synthesisProgress: number;
+  synthesisWaitBetween: number;
   synthesisLimit: number;
 }
 
@@ -32,9 +32,9 @@ const state: AppState = {
   decisionIntroSingle: "",
   decisionIntro: "",
   decisionConjunction: "",
-  maxMBytesPerZip: 100,
+  maxMBytesPerZip: 20,
   replacements: "",
-  synthesisProgress: 0,
+  synthesisWaitBetween: 500,
   synthesisLimit: 0,
 }
 
@@ -45,7 +45,7 @@ const vuexLocal = new VuexPersistence<AppState>({
 export default new Vuex.Store<AppState>({
   state,
   getters: {
-    getField, 
+    getField,
   },
   mutations: {
     setBook(state, { book }: { book: Book }) {
@@ -54,15 +54,6 @@ export default new Vuex.Store<AppState>({
     setConfig(state, { config }: { config: Config }) {
       state.config = config;
     },
-    // setAzureKey(state, azureKey: string) {
-    //   state.azureKey = azureKey;
-    // },
-    // setAzureRegion(state, azureRegion: string) {
-    //   state.azureRegion = azureRegion;
-    // },
-    // setAzureVoice(state, azureVoice: string) {
-    //   state.azureVoice = azureVoice;
-    // },
     updateField,
   },
   actions: {

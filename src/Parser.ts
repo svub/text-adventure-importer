@@ -1,10 +1,13 @@
 import showdown from 'showdown';
 import hash from 'hash-sum';
-import { Book, Chapter, Section, ElementType, Paragraph, If, Else, HasElements, Link, ChangeState, AddItem, RemoveItem,
-  SpecialLink, Style, Specials, Option, Config, Item, MediaType, Choice, FeedbackMode } from './shared/entities';
+import {
+  Book, Chapter, Section, ElementType, Paragraph, If, Else, HasElements, Link, ChangeState, AddItem, RemoveItem,
+  SpecialLink, Style, Specials, Option, Item, MediaType, Choice, FeedbackMode, Image
+} from './shared/entities';
 import { Token, TokenType } from './Lexer';
 import { Functions } from './shared/entities';
 import { parseBool } from './shared/util';
+
 
 export enum CommandType {
   book = 'book',
@@ -21,6 +24,7 @@ export enum CommandType {
   comment = '#',
   style = 'style',
   endstyle = 'endstyle',
+  image = 'image',
   credits = 'credits',
   imprint = 'imprint',
   itemDefinition = 'itemdef',
@@ -31,6 +35,7 @@ export enum CommandType {
   feedback = 'feedback',
   language = 'language',
   pageScrollUpDelay = 'pagescrollupdelay',
+  readOutLoud = "readoutloud"
 }
 
 export type Command = {
@@ -55,7 +60,7 @@ const converter = new showdown.Converter();
 converter.setOption('simpleLineBreaks', true)
 converter.setOption('openLinksInNewWindow', true)
 function parseMarkdown(text: string): string {
-    return converter.makeHtml(text);
+  return converter.makeHtml(text);
 }
 
 export default class Parser {
@@ -74,6 +79,7 @@ export default class Parser {
     let styleElement: Style | null = null;
     let itemDefinition: Item | null = null;
     let option: Option | null = null;
+    let paragraphCounter = 0;
     // let specials: Chapter = {
     //   id: '__specials__',
     //   title: 'Special Sections',
@@ -103,7 +109,7 @@ export default class Parser {
           this.error(`Found a "// ${command.type}" before first container`, token, index, command);
         else
           this.error('Found text before first container', token, index);
-        }
+      }
       return element!;
     }
 
@@ -133,6 +139,7 @@ export default class Parser {
                   enabled: false,
                 },
                 language: 'en',
+                readOutLoud: false,
               }
             };
             break;
@@ -162,7 +169,7 @@ export default class Parser {
             chapter!.sections.push(section);
             break;
 
-            // > <sectionId>
+          // > <sectionId>
           case CommandType.next:
             if (!chapter) this.error('Found a "// >" before first "// chapter"', token, this.position, command);
             if (!section) this.error('Found a "// >" before first "// section"', token, this.position, command);
@@ -283,6 +290,16 @@ export default class Parser {
             styleElement = null;
             break;
 
+          // image <id> <alternative text, optional>
+          case CommandType.image:
+            const image: Image = {
+              type: ElementType.image,
+              id: command.fields[0].toLowerCase(),
+              alt: command.fields.slice(1).join(' '),
+            };
+            topContainer(token, this.position, command).elements.push(image);
+            break;
+
           // credits merge imprint and credits into special, a generic overlay type
           // <title>
           case CommandType.credits:
@@ -399,6 +416,13 @@ export default class Parser {
             book!.config.pageScrollUpDelay = parseInt(command.fields[0] ?? 1);
             break;
 
+          // readOutLoud <boolean>
+          case CommandType.readOutLoud:
+            if (!book) this.error('Found a "// readOutLoud" before "// book"', token, this.position, command);
+            // TODO: merge this with language and others into something generic such as "// config ..."
+            book!.config.readOutLoud = parseBool(command.fields[0] ?? 1);
+            break;
+
           default:
             this.error(`Command type ${command.type} not implemented`, token, this.position, command);
         }
@@ -407,8 +431,9 @@ export default class Parser {
         const text = parseMarkdown(token.data);
         const element: Paragraph = {
           type: ElementType.paragraph,
-          text, 
-          id: hash(text),
+          text,
+          index: paragraphCounter++,
+          hash: hash(text),
         };
         container.elements.push(element);
       }

@@ -1,4 +1,4 @@
-import { ResultReason, SpeechConfig, SpeechSynthesisOutputFormat, SpeechSynthesizer } 
+import { AudioConfig, AudioOutputStream, ResultReason, SpeechConfig, SpeechSynthesisOutputFormat, SpeechSynthesizer }
   from "microsoft-cognitiveservices-speech-sdk";
 
 export type TextAndFilename = {
@@ -6,28 +6,34 @@ export type TextAndFilename = {
   filename: string;
 }
 
-export function createSynthesizer(key, region, voice) {
+export async function synthesizeAudio(text: string, key: string, region: string, voice: string) {
   const speechConfig = SpeechConfig.fromSubscription(key, region);
-  speechConfig.speechSynthesisOutputFormat = SpeechSynthesisOutputFormat.Audio48Khz96KBitRateMonoMp3;
+  speechConfig.speechSynthesisOutputFormat = SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
   speechConfig.speechSynthesisVoiceName = voice;
-  return new SpeechSynthesizer(speechConfig);
-}
+  const stream = AudioOutputStream.createPullStream();
+  const audioConfig = AudioConfig.fromStreamOutput(stream); // avoiding automatic playback;
+  const synthesizer = new SpeechSynthesizer(speechConfig, audioConfig);
 
-export async function synthesizeAudio(text: string, synthesizer: SpeechSynthesizer) {
-  const result = new Promise<{ data: ArrayBuffer; message: string }>((resolve, reject) => {
+  return new Promise<{ data: ArrayBuffer; message: string }>((resolve, reject) => {
     synthesizer.speakTextAsync(text,
-      result => {
+      async result => {
         if (result.reason === ResultReason.SynthesizingAudioCompleted) {
-          resolve({
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            if (await stream.read(new ArrayBuffer(102400)) < 1) break;
+          }
+          synthesizer.close();
+          return resolve({
             data: result.audioData,
             message: `Synthesis successful. Audio data: ${result.audioData.byteLength} bytes.`
           });
         } else if (result.reason === ResultReason.Canceled) {
-          reject("Synthesis failed. Error detail: " + result.errorDetails);
+          return reject("Synthesis canceled. Error detail: " + result.errorDetails);
         }
-        reject("Unknown error " + result);
+        reject("Unknown error: " + result);
       },
-      err => reject("Error: " + err));
+      err => reject("Error: " + err),
+      stream); // give stream to avoid playback on speakers
   });
-  return result;
+
 }

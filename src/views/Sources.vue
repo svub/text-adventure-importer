@@ -52,11 +52,12 @@ main.sources
       br
       textarea.replacements(type="text" v-model.number="replacements")
       br
-      | The system will continue in case it failed half way before. 
-      | Clear this field to make the process start from scratch.
+      | The system between each text block, this can help avoid "errors" or "rate limiting".
       br
-      input.synthesisProgress(type="text" v-model.number="synthesisProgress")
-    button.prepAudio(@click="generateAudio") generate text-to-speech audio for this book
+      input.synthesisWaitBetween(type="text" v-model.number="synthesisWaitBetween")
+      p Extract all files to "{{ filesFolder }}" so the system can check for existing files.
+    button.prepAudio(v-if="!audioGenerationInProgress" @click="generateAudio") generate audio for this book
+    button.stopAudio(v-if="audioGenerationInProgress" @click="audioGenerationInProgress = false") Cancel
 </template>
 
 <script lang="ts">
@@ -64,11 +65,12 @@ import { Component, Vue } from "vue-property-decorator";
 import { mapFields } from 'vuex-map-fields';
 import { flattenDeep } from 'lodash';
 import JSZip from 'jszip';
-import { loadText, log, warn, error } from "../shared/util";
-import { Book, Element, ElementType, AddItem, Paragraph } from "../shared/entities";
+import { loadText, log, warn, error, waitFor } from "../shared/util";
+import { Book, Element, ElementType, AddItem, Paragraph, isSpecialLink } from "../shared/entities";
+import { paragraphFilename, titleFilename, decisionFilename } from "../shared/audio";
 import Lexer, { Token } from "../Lexer";
 import Parser, { ParserError } from "../Parser";
-import { TextAndFilename, createSynthesizer, synthesizeAudio } from '@/util/audio';
+import { TextAndFilename, synthesizeAudio } from '@/util/audio';
 import { downloadFile, getAllElements } from '@/util/util';
 
 @Component({
@@ -78,7 +80,7 @@ import { downloadFile, getAllElements } from '@/util/util';
       'azureKey', 'azureRegion', 'azureVoice',
       'decisionIntroSingle', 'decisionIntro', 'decisionConjunction',
       'maxMBytesPerZip', 'replacements',
-      'synthesisProgress', 'synthesisLimit',]),
+      'synthesisWaitBetween', 'synthesisLimit',]),
   },
 })
 export default class Sources extends Vue {
@@ -96,8 +98,10 @@ export default class Sources extends Vue {
   public decisionConjunction!: string;
   public maxMBytesPerZip!: number;
   public replacements!: string;
-  public synthesisProgress!: number;
+  public synthesisWaitBetween!: number;
   public synthesisLimit!: number;
+  public filesFolder = 'files/';
+  public audioGenerationInProgress = false;
 
   // mounted() { }
 
@@ -210,10 +214,10 @@ MediaUrl is a link to some website or a media file (optional, depending on media
     const paragraphs = getAllElements<Paragraph>(this.book, ElementType.paragraph)
       .map(ref => {
         const text = ref.element.text
-          .replace(/<p>|<h[\d]>|<em>|<\/em>/gi, "")
+          .replace(/<p>|<h[\d]>|<em>|<\/em>|<a[^>]*>|<\/a>/gi, "")
           .replace(/<br>|<\/p>|<\/h[\d]>/gi, "\n")
           .replace(/&nbsp;/gi, " ");
-        const filename = `${ref.chapterId}-${ref.sectionId}-paragraph-${ref.element.id}.mp3`;
+        const filename = paragraphFilename(ref.chapterId, ref.sectionId, ref.element.hash);
         return { text, filename };
       });
     const totalLength = paragraphs.reduce((sum, ref) => sum + ref.text.length, 0);
@@ -226,11 +230,11 @@ MediaUrl is a link to some website or a media file (optional, depending on media
           const intro = section.next.length > 1 ? this.decisionIntro : this.decisionIntroSingle;
           const choices = section.next.map(link => link.title);
           const text = `${intro}\n${choices.join(`\n${this.decisionConjunction}\n`)}`;
-          const filename = `${chapter.id}-${section.id}-decision.mp3`;
+          const filename = decisionFilename(chapter.id, section.id);
           entries.push({ text, filename });
         }
         const text = section.title;
-        const filename = `${chapter.id}-${section.id}-title.mp3`;
+        const filename = titleFilename(chapter.id, section.id);
         entries.push({ text, filename });
         return entries;
       });
@@ -246,42 +250,65 @@ MediaUrl is a link to some website or a media file (optional, depending on media
       downloadFile(zipFile, filename);
     }
 
+    async function isPlayableAudioFile(url: string): Promise<boolean> {
+      try {
+        return new Promise((resolve) => {
+          const audio = new Audio(url);
+          audio.addEventListener('canplay', () => resolve(true));
+          audio.addEventListener('error', () => resolve(false));
+        });
+      } catch (error) {
+        console.error('Error checking if the file is playable:', error);
+        return false;
+      }
+    }
+    (window as any).isPlayableAudioFile = isPlayableAudioFile;
+
     // example voices "de-DE-KillianNeural" "de-DE-ChristophNeural"
-    const synthesizer = createSynthesizer(this.azureKey, this.azureRegion, this.azureVoice);
     const maxPerZip = this.maxMBytesPerZip * 1024 * 1024;
     let currentSize = 0;
     let zip = new JSZip();
     let counter = 0;
-    const texts = [...paragraphs, ...decisionsAndHeadings];
+    const texts = [...paragraphs, ...decisionsAndHeadings,];
     console.log('Total number of characters', texts.reduce((sum, ref) => sum + ref.text.length, 0));
+    this.audioGenerationInProgress = true;
 
     for (const [index, ref] of texts.entries()) {
-      if (this.synthesisProgress > 0 && this.synthesisProgress > index) continue; // skip forward
+      // if (this.synthesisProgress > 0 && this.synthesisProgress > index) continue; // skip forward
       try {
+        // check if ref.filename already exists and plays -> skip
+        if (await isPlayableAudioFile(this.filesFolder + ref.filename)) {
+          console.log(`${index}/${texts.length}`, ref.filename, 'skipping, already exists.');
+          continue;
+        }
+
+        // load audio
         let text = ref.text;
         replacements.forEach(replace => text = text.replaceAll(replace[0], replace[1]));
-        const result = await synthesizeAudio(text, synthesizer);
+        const result = await synthesizeAudio(text, this.azureKey, this.azureRegion, this.azureVoice);
         console.log(`${index}/${texts.length}`, ref.filename, result.message);
         zip.file(ref.filename, result.data);
+        await waitFor(this.synthesisWaitBetween); // avoid rate limiting
         currentSize += result.data.byteLength;
         if (currentSize > maxPerZip) {
           await saveZip(zip, `${this.book.title}-${this.azureVoice}-audio-files-${counter}.zip`);
           zip = new JSZip();
           currentSize = 0;
           counter++;
-          this.synthesisProgress = index;
+          // this.synthesisProgress = index;
         }
       } catch (e) {
         console.error(`${index}/${texts.length}`, ref.filename, e);
         continue;
       }
-      if (this.synthesisLimit > 0 && counter >= this.synthesisLimit) break;
+      if (!this.audioGenerationInProgress || (this.synthesisLimit > 0 && counter >= this.synthesisLimit)) break;
     }
 
     if (currentSize > 0) {
       await saveZip(zip, `${this.book.title}-${this.azureVoice}-audio-files-${counter}.zip`);
     }
-    synthesizer.close();
+
+    this.audioGenerationInProgress = false;
   }
 
   validate() {
