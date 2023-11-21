@@ -2,6 +2,7 @@
 node_modules
 /dist
 *.ignore*
+public/files
 
 
 # local env files
