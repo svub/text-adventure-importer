@@ -35,7 +35,8 @@ export enum CommandType {
   feedback = 'feedback',
   language = 'language',
   pageScrollUpDelay = 'pagescrollupdelay',
-  readOutLoud = "readoutloud"
+  readOutLoud = "readoutloud",
+  consent = "consent",
 }
 
 export type Command = {
@@ -326,6 +327,20 @@ export default class Parser {
             };
             book!.specials[Specials.imprint] = imprint;
             section = imprint;
+            break;
+
+          // consent
+          // <title>
+          case CommandType.consent:
+            if (!book) this.error('Found a "// consent" before "// book"', token, this.position, command);
+            const consent: Section = {
+              id: Specials.consent,
+              title: getTitle(command),
+              elements: [],
+              next: [],
+            };
+            book!.specials[Specials.consent] = consent;
+            section = consent;
             break;
 
           // itemdef <id> <category?> <mediaType?> <mediaUrl?>
